@@ -1,4 +1,4 @@
-use logos::Logos;
+use logos::{Logos};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -65,39 +65,52 @@ enum Token {
     Error,
 }
 
-pub fn assemble(input: &str) -> Result<String, AssemblerError> {
-    let lexer = Token::lexer(input);
+pub struct Program {
+    tokens: Vec<Token>,
+}
 
-    let mut output = String::new();
+impl Program {
+    pub fn from_assembly(assembly: &str) -> Self {
+        let lexer = Token::lexer(assembly);
+        let tokens = lexer.collect();
 
-    let mut expecting_operand = false;
-    for token in lexer {
-        dbg!(&token);
+        Self {
+            tokens,
+        }
+    }
 
-        // If we're expecting an operand, make sure this token is one
-        if expecting_operand {
-            match token {
-                Token::Operand(_) => {}
-                _ => {
-                    return Err(AssemblerError::ExpectedOperand);
+    pub fn into_opcodes(&self) -> Result<String, AssemblerError> {
+        let mut output = String::new();
+
+        let mut expecting_operand = false;
+        for token in &self.tokens {
+            dbg!(&token);
+
+            // If we're expecting an operand, make sure this token is one
+            if expecting_operand {
+                match token {
+                    Token::Operand(_) => {}
+                    _ => {
+                        return Err(AssemblerError::ExpectedOperand);
+                    }
                 }
             }
+
+            // Push the token representation to the output
+            if let Some(token_repr) = get_token_representation(&token) {
+                output.push(token_repr);
+            }
+
+            // Flag whether we're expecting an operand as the next token
+            expecting_operand = does_token_require_operand(&token);
         }
 
-        // Push the token representation to the output
-        if let Some(token_repr) = get_token_representation(&token) {
-            output.push(token_repr);
+        if expecting_operand {
+            return Err(AssemblerError::ExpectedOperand);
         }
 
-        // Flag whether we're expecting an operand as the next token
-        expecting_operand = does_token_require_operand(&token);
+        Ok(output)
     }
-
-    if expecting_operand {
-        return Err(AssemblerError::ExpectedOperand);
-    }
-
-    Ok(output)
 }
 
 fn get_token_representation(token: &Token) -> Option<char> {
@@ -146,31 +159,36 @@ mod tests {
 
     #[test]
     fn handles_simple_program() {
-        let bin = assemble("OEN 0 \nSTO 0");
+        let program = Program::from_assembly("OEN 0 \nSTO 0");
+        let bin = program.into_opcodes();
         assert_eq!(bin, Ok(String::from("B080")));
     }
 
     #[test]
     fn handles_non_zero_operands() {
-        let bin = assemble("OEN 0\nSTO 0\nLD 7\nSTO F");
+        let program = Program::from_assembly("OEN 0\nSTO 0\nLD 7\nSTO F");
+        let bin = program.into_opcodes();
         assert_eq!(bin, Ok(String::from("B080178F")));
     }
 
     #[test]
     fn handles_missing_final_operand() {
-        let bin = assemble("OEN 0\nSTO 0\nLD 7\nSTO");
+        let program = Program::from_assembly("OEN 0\nSTO 0\nLD 7\nSTO");
+        let bin = program.into_opcodes();
         assert_eq!(bin, Err(AssemblerError::ExpectedOperand));
     }
 
     #[test]
     fn handles_missing_middle_operand() {
-        let bin = assemble("OEN 0\nSTO \nLD 7\nSTO F");
+        let program = Program::from_assembly("OEN 0\nSTO \nLD 7\nSTO F");
+        let bin = program.into_opcodes();
         assert_eq!(bin, Err(AssemblerError::ExpectedOperand));
     }
 
     #[test]
     fn handles_comments() {
-        let bin = assemble("OEN 0 ;enable the output because RR is zero, so input 1 (!RR) is 1\nSTO 0 ;store the 0 from RR in output 1, so the unit outputs the signal \"0:0\"");
+        let program = Program::from_assembly("OEN 0 ;enable the output because RR is zero, so input 1 (!RR) is 1\nSTO 0 ;store the 0 from RR in output 1, so the unit outputs the signal \"0:0\"");
+        let bin = program.into_opcodes();
         assert_eq!(bin, Ok(String::from("B080")));
     }
 }
