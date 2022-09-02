@@ -97,12 +97,12 @@ impl Program {
             }
 
             // Push the token representation to the output
-            if let Some(token_repr) = get_token_representation(&token) {
+            if let Some(token_repr) = get_token_representation(token) {
                 output.push(token_repr);
             }
 
             // Flag whether we're expecting an operand as the next token
-            expecting_operand = does_token_require_operand(&token);
+            expecting_operand = does_token_require_operand(token);
         }
 
         if expecting_operand {
