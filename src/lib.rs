@@ -1,4 +1,4 @@
-use logos::{Logos};
+use logos::Logos;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -74,9 +74,7 @@ impl Program {
         let lexer = Token::lexer(assembly);
         let tokens = lexer.collect();
 
-        Self {
-            tokens,
-        }
+        Self { tokens }
     }
 
     pub fn into_opcodes(&self) -> Result<String, AssemblerError> {
