@@ -1,10 +1,16 @@
 use logos::Logos;
 use thiserror::Error;
 
+// See Goonstation source code for more details: https://github.com/goonstation/goonstation/blob/master/code/modules/mechanics/MechanicMC14500.dm
+
+const MAX_PROGRAM_LENGTH: usize = 128;
+
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum AssemblerError {
     #[error("Expected operand")]
     ExpectedOperand,
+    #[error("Exceeded max program length")]
+    ExceededMaxLength,
 }
 
 #[derive(Logos, Debug, PartialEq)]
@@ -78,6 +84,11 @@ impl Program {
     }
 
     pub fn into_opcodes(&self) -> Result<String, AssemblerError> {
+
+        if self.tokens.len() > MAX_PROGRAM_LENGTH {
+            return Err(AssemblerError::ExceededMaxLength);
+        }
+
         let mut output = String::new();
 
         let mut expecting_operand = false;
